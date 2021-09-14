@@ -2,8 +2,27 @@
 facid = 351166
 rsegid = 352139
 
+runid = 401
+# watershed container
 dat <- om_get_rundata(352139, 401, omsite)
+# facility
 fdat <- om_get_rundata(351166, 401, omsite)
+# runoff agregator
+roadat <- om_get_rundata(352141, 401, omsite)
+# cbp6 agregator
+cbp6dat <- om_get_rundata(352143, 401, omsite)
+# runoff 
+
+
+quantile(dat$impoundment_Qin)
+quantile(dat$local_channel_Qout)
+quantile(dat$Runit_mode)
+quantile(roadat$Runit)
+quantile(cbp6dat$Qunit)
+quantile(fdat$wd_mgd)
+
+hydroTSM::fdc(cbind(dat$impoundment_Qin, dat$impoundment_Qout))
+quantile(dat$impoundment_use_remain_mg)
 
 seg.hydroid <- 476998
 fac.hydroid = 71977
