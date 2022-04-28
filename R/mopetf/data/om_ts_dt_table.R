@@ -2,22 +2,24 @@ library("openmi.om")
 library("xts")
 library("sqldf")
 
-om_ts_dt_table <- function (input_table, colname, dt) {
+om_ts_dt_table <- function (input_table, colname, dt, tseg=FALS) {
   
-  beg<- as.POSIXct( format(min(index(input_table)), "%Y-%m-%d %H:%M", tz=""))
-  bend<- as.POSIXct( format(max(index(input_table)), "%Y-%m-%d %H:%M", tz=""))
   dat_ts_table <- as.data.frame(input_table[,colname])
   names(dat_ts_table) <- c('tsvalue')
   dat_ts_table$timestamp <-as.integer(index(input_table))
-  tseq <- seq(as.integer(beg), as.integer(bend), by=dt)
+  # if we're given a seq (sequence table), do nothing, otherwise, infer from data
+  # and timestep
+  if (is.logical(tseg)) {
+    beg<- as.POSIXct( format(min(index(input_table)), "%Y-%m-%d %H:%M", tz=""))
+    bend<- as.POSIXct( format(max(index(input_table)), "%Y-%m-%d %H:%M", tz=""))
+    tseq <- seq(as.integer(beg), as.integer(bend), by=dt)
+  }
   
   tbase <-  as.data.frame(tseq)
   names(tbase) <- c('timestamp')
   
   # get exact data matches,
   # stash in column names "first_inner" and "last_inner"
-  # call this with "fn$" as prefix, which is from gsubfnb
-  # package that provides variable expansion like "$ts"
   tsmatrix1 <- sqldf(
     paste(
       "

@@ -1,23 +1,78 @@
 #install.packages("quantmod")
 library("quantmod")
+# qmao has earnings and other things
+#install_github("gsee/qmao")
 library("devtools")
 #install_github("HARPgroup/openmi-om")
 library("openmi.om")
 library("stringr")
+library("sqldf")
 
 options("getSymbols.warning4.0"=FALSE)
 options("getSymbols.yahoo.warning"=FALSE)
-# Downloading Kubota price using quantmod
-kub <- getSymbols("KUBTY", from = '2000-01-01',
-           to = "2022-02-15",warnings = FALSE,
-           auto.assign = FALSE)
+# get the data in Yen
+kubyen <- getSymbols("6326.T", from = '2000-01-01',
+                        to = "2022-02-15",warnings = FALSE,
+                        auto.assign = FALSE
+)
+
+# Downloading Kubota price using quantmod getSymbols function
+kub <- getSymbols(
+  "KUBTY", from = '2000-01-01',
+  to = "2022-02-15",warnings = FALSE,
+  auto.assign = FALSE
+)
+kub$close <- kub$KUBTY.Close
+kub$tstime <- as.numeric(as.POSIXct(as.character(index(kub)), format="%Y-%m-%d", tz=""))
+kub <- as.data.frame(kub)
+
+nikkei <- getSymbols(
+  "^N225", from = '2000-01-01',
+  to = "2022-02-15",warnings = FALSE,
+  auto.assign = FALSE
+)
+nikkei$close <- nikkei$N225.Close
+nikkei$tstime <- as.numeric(as.POSIXct(as.character(index(nikkei)), format="%Y-%m-%d", tz=""))
+nikkei <- as.data.frame(nikkei)
+
+dji <- getSymbols(
+  "^DJI", from = '2000-01-01',
+  to = "2022-02-15",warnings = FALSE,
+  auto.assign = FALSE
+)
+dji$close <- dji$DJI.Close
+dji$tstime <- as.numeric(as.POSIXct(as.character(index(dji)), format="%Y-%m-%d", tz=""))
+dji <- as.data.frame(dji)
+
+kn <- sqldf(
+  "select kub.tstime, kub.close as kclose,
+     dji.close as djclose,
+     nikkei.close as nkclose 
+  from kub left outer join nikkei
+  on (kub.tstime = nikkei.tstime)
+  left outer join dji
+  on (kub.tstime = dji.tstime)
+  order by kub.tstime"
+)
+kulm <- lm(kclose ~ nkclose, data = kn)
+summary(kulm)
+kudlm <- lm(kclose ~ djclose, data = kn)
+summary(kudlm)
+kundlm <- lm(kclose ~ djclose + nkclose, data = kn)
+summary(kundlm)
 
 # set up the nmodel container
 m <- openmi.om.runtimeController$new();
 
 # get the historic eps ratio
 eps_kubty <- openmi.om.timeSeriesInput$new()
+# gert earnings data from hand spun time series
+# source: https://www.macrotrends.net/stocks/charts/KUBTY/kubota/eps-earnings-per-share-diluted
+#    other winfohttps://www.macrotrends.net/stocks/charts/KUBTY/kubota/revenue
+# alt source in Yen: https://in.investing.com/equities/kubota-corp.-historical-data-earnings
+# other earnings info for Janpanese stocks: https://tradingeconomics.com/6326:jp:eps
 eps_data <- read.table("/home/git/workbook/R/mopetf/data/kubty.eps.annual.txt")
+
 eps_kubty$tsvalues <- xts(
   eps_data$V2,
   order.by = as.POSIXct(as.character(eps_data$V1), format="%Y", tz="")
